@@ -1,4 +1,4 @@
-﻿# 📈 SolFX-Predictor
+# 📈 SolFX-Predictor
 **Predicción del tipo de cambio USD/PEN mediante Machine Learning**
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
@@ -18,15 +18,15 @@ Para resolver esto, el proyecto propone una arquitectura analítica que combina:
 
 ## 📂 Arquitectura del Repositorio
 
-`	ext
+```text
 SolFX-Predictor/
-├── data/               # Datasets: Crudos (Bloomberg, BCRPData) y Procesados
-├── docs/               # Documentación de la investigación desglosada por capítulos
-├── models/             # Artefactos y modelos entrenados listos para despliegue
-├── notebooks/          # Jupyter Notebooks para Análisis Exploratorio de Datos (EDA)
-├── src/                # Scripts fuente (procesamiento, entrenamiento y métricas)
-└── README.md           # Panel principal de navegación
-`
+├── data/           # Datasets: Crudos (Bloomberg, BCRPData) y Procesados
+├── docs/           # Documentación de la investigación desglosada por capítulos
+├── models/         # Artefactos y modelos entrenados listos para despliegue
+├── notebooks/      # Jupyter Notebooks para Análisis Exploratorio de Datos (EDA)
+├── src/            # Scripts fuente (procesamiento, entrenamiento y métricas)
+└── README.md       # Panel principal de navegación
+```
 
 ## 🛠️ Enfoque Metodológico
 1.  **Ingeniería de Características:** Creación de variables técnicas (rezagos, distancias a medias móviles, indicadores de tensión financiera global).
