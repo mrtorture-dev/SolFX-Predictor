@@ -156,29 +156,55 @@ class FXCalendarAligner:
         daily_df: pd.DataFrame,
         monthly_df: pd.DataFrame,
         daily_date_col: str = "Fecha",
-        monthly_date_col: str = "Mes de referencia",
+        monthly_date_col: Optional[str] = None,
         macro_prefix: str = "IPC_",
     ) -> pd.DataFrame:
         """
-        Fusiona variables macroeconómicas de baja frecuencia (ej. IPC mensual) con la serie diaria.
+        Fusiona variables macroeconómicas de baja frecuencia (ej. IPC mensual de BCRP o Bloomberg) con la serie diaria.
         Aplica forward-fill para mantener la última información conocida disponible hasta el día t.
+        Aplica shift(1) para garantizar el protocolo anti-leakage (conocer la información previa al día t).
         """
         daily = daily_df.sort_values(daily_date_col).copy()
-        monthly = monthly_df.sort_values(monthly_date_col).copy()
+        monthly = monthly_df.copy()
+
+        # Detección automática de la columna de fecha en el DataFrame mensual
+        if monthly_date_col is None or monthly_date_col not in monthly.columns:
+            for cand in ["Mes", "Mes de referencia", "Fecha", "Date", "Dates"]:
+                if cand in monthly.columns:
+                    monthly_date_col = cand
+                    break
+            if monthly_date_col is None:
+                monthly_date_col = monthly.columns[0]
 
         monthly["join_month"] = pd.to_datetime(monthly[monthly_date_col]).dt.to_period("M")
         daily["join_month"] = pd.to_datetime(daily[daily_date_col]).dt.to_period("M")
 
         feature_cols = [c for c in monthly.columns if c not in [monthly_date_col, "join_month"]]
-        rename_map = {c: f"{macro_prefix}{c}" for c in feature_cols}
+        rename_map = {}
+        for c in feature_cols:
+            if c.startswith("IPC_") or c.startswith("Inflacion_"):
+                rename_map[c] = c
+            else:
+                rename_map[c] = f"{macro_prefix}{c}"
+
         monthly_sub = monthly[["join_month"] + feature_cols].rename(columns=rename_map)
 
         merged = pd.merge(daily, monthly_sub, on="join_month", how="left")
         merged = merged.drop(columns=["join_month"])
 
-        # Forward fill continuo para días donde el IPC aún no ha sido publicado
+        # Forward fill continuo (LOCF)
         macro_cols = list(rename_map.values())
         merged[macro_cols] = merged[macro_cols].ffill()
+
+        # Si hay primeros meses nulos (por ejemplo, serie diaria empieza antes del primer mes de IPC),
+        # solo se rellena bfill residual si es estrictamente necesario, o se mantienen
+        if merged[macro_cols].iloc[0].isna().any():
+            merged[macro_cols] = merged[macro_cols].bfill()
+
+        # Protocolo Anti-Leakage: Las variables macro se rezagan un día hábil (shift(1))
+        # para asegurar que al predecir el día t solo se use el dato conocido hasta t-1
+        for col in macro_cols:
+            merged[f"{col}_lag_1"] = merged[col].shift(1)
 
         return merged
 
@@ -417,10 +443,18 @@ class SolFXPipeline:
         raw_pen_df: pd.DataFrame,
         monthly_macro_df: Optional[pd.DataFrame] = None,
         exog_daily_df: Optional[pd.DataFrame] = None,
+        use_bcrp_ipc: bool = True,
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         Ejecuta el pipeline completo y retorna:
         (df_full_processed, df_train, df_holdout)
+
+        Args:
+            raw_pen_df: DataFrame con las cotizaciones diarias spot del USD/PEN.
+            monthly_macro_df: DataFrame opcional con series mensuales (ej. Bloomberg o BCRP).
+            exog_daily_df: DataFrame opcional con covariables exógenas diarias adicionales.
+            use_bcrp_ipc: Si es True y monthly_macro_df no se suministra o tiene cobertura parcial,
+                          descarga e integra automáticamente las series históricas oficiales del BCRP (1994-2026).
         """
         logger.info("Iniciando Pipeline de Preprocesamiento SolFX (Palma & Salazar 2025)...")
 
@@ -444,8 +478,27 @@ class SolFXPipeline:
             f"({aligned_df['Fecha'].min().date()} a {aligned_df['Fecha'].max().date()})."
         )
 
-        # 3. Fusión con variables mensuales si existen (ej. IPC)
-        if monthly_macro_df is not None and not monthly_macro_df.empty:
+        # 3. Fusión con variables mensuales (IPC oficial BCRP o suministrado)
+        if use_bcrp_ipc:
+            try:
+                from .bcrp_loader import BCRPLoader
+                bcrp_macro = BCRPLoader.fetch_all_ipc_series()
+                aligned_df = FXCalendarAligner.merge_monthly_macro(
+                    aligned_df,
+                    bcrp_macro,
+                    daily_date_col="Fecha",
+                    monthly_date_col="Mes",
+                )
+                logger.info("3. Integración e imputación forward de series completas de IPC de BCRP (1994-2026) completada.")
+            except Exception as e:
+                logger.warning(f"No se pudo cargar API de BCRP ({e}). Intentando con monthly_macro_df...")
+                if monthly_macro_df is not None and not monthly_macro_df.empty:
+                    aligned_df = FXCalendarAligner.merge_monthly_macro(
+                        aligned_df,
+                        monthly_macro_df,
+                        daily_date_col="Fecha",
+                    )
+        elif monthly_macro_df is not None and not monthly_macro_df.empty:
             aligned_df = FXCalendarAligner.merge_monthly_macro(
                 aligned_df,
                 monthly_macro_df,
@@ -513,9 +566,9 @@ class SolFXPipeline:
         )
 
         # 9. Filtrar filas completas (eliminar NaNs introducidos por rezagos y ventanas)
-        df_clean_final = df_processed.dropna(subset=[self.config.target_col, "GARCH_vol", "RSI", "MACD_line"]).reset_index(
-            drop=True
-        )
+        lag_cols_to_check = [f"PEN_log_ret_lag_{l}" for l in self.config.ar_lags if f"PEN_log_ret_lag_{l}" in df_processed.columns]
+        required_cols = [self.config.target_col, "GARCH_vol", "RSI", "MACD_line"] + lag_cols_to_check
+        df_clean_final = df_processed.dropna(subset=required_cols).reset_index(drop=True)
         logger.info(f"9. Dataset estructurado final sin NaNs: {len(df_clean_final)} observaciones.")
 
         # 10. Partición temporal estricta Train / Holdout (N_HOLDOUT = 60)
