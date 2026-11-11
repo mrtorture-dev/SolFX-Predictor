@@ -1,0 +1,88 @@
+{
+    "config": {
+        "date_col": "Fecha",
+        "price_col": "USD_PEN origen (PEN por USD)",
+        "target_col": "PEN_log_ret",
+        "n_holdout": 60,
+        "min_train_size": 252,
+        "step_size": 21,
+        "ar_lags": [
+            1,
+            2,
+            3,
+            5,
+            10,
+            21
+        ],
+        "sma_windows": [
+            5,
+            10,
+            20
+        ],
+        "rsi_period": 14,
+        "vol_window": 21,
+        "fill_method": "ffill",
+        "outlier_iqr_factor": 3.0
+    },
+    "total_observations_raw": 8136,
+    "total_observations_aligned": 8544,
+    "total_observations_clean": 8533,
+    "train_observations": 8473,
+    "holdout_observations": 60,
+    "train_period": [
+        "1994-01-18",
+        "2026-07-09"
+    ],
+    "holdout_period": [
+        "2026-07-10",
+        "2026-10-01"
+    ],
+    "features_generated": [
+        "IPC_PRCPI",
+        "IPC_PRCPFO",
+        "IPC_PRCPLCLO",
+        "IPC_PRCPLEDU",
+        "IPC_PRCPLFUR",
+        "IPC_PRCPLHEA",
+        "IPC_PRCPLHWE",
+        "IPC_PRCPLICO",
+        "IPC_PRCPLTRA",
+        "IPC_PRCPOTH",
+        "PEN_log_ret_lag_1",
+        "PEN_log_ret_lag_2",
+        "PEN_log_ret_lag_3",
+        "PEN_log_ret_lag_5",
+        "PEN_log_ret_lag_10",
+        "PEN_log_ret_lag_21",
+        "SMA_5",
+        "price_vs_SMA_5",
+        "SMA_10",
+        "price_vs_SMA_10",
+        "SMA_20",
+        "price_vs_SMA_20",
+        "RSI",
+        "GARCH_vol",
+        "MACD_line",
+        "MACD_signal",
+        "MACD_histogram",
+        "month_sin",
+        "month_cos",
+        "day_of_week_sin",
+        "day_of_week_cos"
+    ],
+    "stationarity_tests": {
+        "name": "PEN_log_ret",
+        "adf_stat": -15.473402365494506,
+        "adf_pvalue": 2.61206793428594e-28,
+        "adf_is_stationary": true,
+        "kpss_stat": 0.37888337271031947,
+        "kpss_pvalue": 0.08625716693520713,
+        "kpss_is_stationary": true
+    },
+    "outlier_bounds": {
+        "lower": -0.007772815384071496,
+        "upper": 0.007904685693401537,
+        "median": 0.0,
+        "extreme_count": 278
+    }
+}
