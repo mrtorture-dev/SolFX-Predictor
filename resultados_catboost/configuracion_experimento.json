@@ -1,0 +1,63 @@
+{
+  "descripcion": "CatBoost directo sobre retornos futuros en pb",
+  "fecha_entrenamiento_final": "2026-07-09",
+  "periodo_holdout": [
+    "2026-07-10",
+    "2026-10-01"
+  ],
+  "horizontes": [
+    1,
+    5,
+    20
+  ],
+  "columnas_x": [
+    "PEN_log_ret_lag_1",
+    "PEN_log_ret_lag_2",
+    "PEN_log_ret_lag_3",
+    "PEN_log_ret_lag_5",
+    "PEN_log_ret_lag_10",
+    "PEN_log_ret_lag_21",
+    "price_vs_SMA_5",
+    "price_vs_SMA_10",
+    "price_vs_SMA_20",
+    "RSI",
+    "GARCH_vol",
+    "MACD_line",
+    "MACD_signal",
+    "MACD_histogram",
+    "month_sin",
+    "month_cos",
+    "day_of_week_sin",
+    "day_of_week_cos"
+  ],
+  "candidatos": [
+    {
+      "iterations": 220,
+      "learning_rate": 0.03,
+      "depth": 3,
+      "l2_leaf_reg": 12.0,
+      "min_data_in_leaf": 25
+    },
+    {
+      "iterations": 320,
+      "learning_rate": 0.03,
+      "depth": 4,
+      "l2_leaf_reg": 15.0,
+      "min_data_in_leaf": 35
+    },
+    {
+      "iterations": 380,
+      "learning_rate": 0.02,
+      "depth": 3,
+      "l2_leaf_reg": 20.0,
+      "min_data_in_leaf": 40
+    }
+  ],
+  "cv": "TimeSeriesSplit(n_splits=3,test_size=252,gap=h)",
+  "origen_movil": true,
+  "no_se_usaron": [
+    "IPC/Inflacion sin fecha de publicacion",
+    "USD_PEN actual como predictor",
+    "PEN_log_ret contemporaneo"
+  ]
+}

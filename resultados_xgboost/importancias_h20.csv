@@ -1,0 +1,13 @@
+,importancia_relativa
+month_sin,0.14811207
+GARCH_vol,0.1222718
+MACD_signal,0.113721326
+MACD_line,0.10987451
+month_cos,0.089808516
+price_vs_SMA_20,0.080792814
+price_vs_SMA_10,0.06450846
+MACD_histogram,0.059619498
+RSI,0.045832794
+price_vs_SMA_5,0.041590095
+PEN_log_ret_lag_21,0.03810723
+PEN_log_ret_lag_3,0.03414669

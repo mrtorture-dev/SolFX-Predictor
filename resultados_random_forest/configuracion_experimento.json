@@ -1,0 +1,66 @@
+{
+  "descripcion": "Random Forest directo sobre retornos futuros en pb",
+  "fecha_entrenamiento_final": "2026-07-09",
+  "periodo_holdout": [
+    "2026-07-10",
+    "2026-10-01"
+  ],
+  "horizontes": [
+    1,
+    5,
+    20
+  ],
+  "columnas_x": [
+    "PEN_log_ret_lag_1",
+    "PEN_log_ret_lag_2",
+    "PEN_log_ret_lag_3",
+    "PEN_log_ret_lag_5",
+    "PEN_log_ret_lag_10",
+    "PEN_log_ret_lag_21",
+    "price_vs_SMA_5",
+    "price_vs_SMA_10",
+    "price_vs_SMA_20",
+    "RSI",
+    "GARCH_vol",
+    "MACD_line",
+    "MACD_signal",
+    "MACD_histogram",
+    "month_sin",
+    "month_cos",
+    "day_of_week_sin",
+    "day_of_week_cos"
+  ],
+  "candidatos": [
+    {
+      "n_estimators": 250,
+      "max_depth": 4,
+      "min_samples_split": 40,
+      "min_samples_leaf": 25,
+      "max_features": 0.6,
+      "max_samples": 0.85
+    },
+    {
+      "n_estimators": 350,
+      "max_depth": 5,
+      "min_samples_split": 50,
+      "min_samples_leaf": 30,
+      "max_features": "sqrt",
+      "max_samples": 0.85
+    },
+    {
+      "n_estimators": 400,
+      "max_depth": 3,
+      "min_samples_split": 60,
+      "min_samples_leaf": 40,
+      "max_features": 0.5,
+      "max_samples": 0.8
+    }
+  ],
+  "cv": "TimeSeriesSplit(n_splits=3,test_size=252,gap=h)",
+  "origen_movil": true,
+  "no_se_usaron": [
+    "IPC/Inflacion sin fecha de publicacion",
+    "USD_PEN actual como predictor",
+    "PEN_log_ret contemporaneo"
+  ]
+}

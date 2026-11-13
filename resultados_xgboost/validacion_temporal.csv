@@ -1,0 +1,10 @@
+horizonte,candidato,mae_cv_bp,mae_cv_rw_bp,hiperparametros
+1,1,27.260676929833025,27.121807147675074,"{""n_estimators"": 180, ""max_depth"": 2, ""learning_rate"": 0.03, ""min_child_weight"": 12, ""reg_lambda"": 12.0}"
+1,2,27.460292109607412,27.121807147675074,"{""n_estimators"": 300, ""max_depth"": 3, ""learning_rate"": 0.03, ""min_child_weight"": 15, ""reg_lambda"": 15.0}"
+1,3,27.31479075952959,27.121807147675074,"{""n_estimators"": 360, ""max_depth"": 2, ""learning_rate"": 0.02, ""min_child_weight"": 20, ""reg_lambda"": 20.0}"
+5,1,66.46971053641516,65.0829776547855,"{""n_estimators"": 180, ""max_depth"": 2, ""learning_rate"": 0.03, ""min_child_weight"": 12, ""reg_lambda"": 12.0}"
+5,2,66.5701158387741,65.0829776547855,"{""n_estimators"": 300, ""max_depth"": 3, ""learning_rate"": 0.03, ""min_child_weight"": 15, ""reg_lambda"": 15.0}"
+5,3,66.64096372730069,65.0829776547855,"{""n_estimators"": 360, ""max_depth"": 2, ""learning_rate"": 0.02, ""min_child_weight"": 20, ""reg_lambda"": 20.0}"
+20,1,133.99596075920917,127.95664061379786,"{""n_estimators"": 180, ""max_depth"": 2, ""learning_rate"": 0.03, ""min_child_weight"": 12, ""reg_lambda"": 12.0}"
+20,2,134.8258716347887,127.95664061379786,"{""n_estimators"": 300, ""max_depth"": 3, ""learning_rate"": 0.03, ""min_child_weight"": 15, ""reg_lambda"": 15.0}"
+20,3,134.2801612807649,127.95664061379786,"{""n_estimators"": 360, ""max_depth"": 2, ""learning_rate"": 0.02, ""min_child_weight"": 20, ""reg_lambda"": 20.0}"
