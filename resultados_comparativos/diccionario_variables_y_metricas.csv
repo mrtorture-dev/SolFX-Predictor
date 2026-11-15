@@ -1,0 +1,28 @@
+Categoria,Codigo Variable / Columna,Nombre Descriptivo,Formula / Definicion,Interpretacion Economica y Estadistica
+Variable Predictora (X),PEN_log_ret_lag_1,Retorno logaritmico rezagado 1 dia habil,ln(P_{t-1} / P_{t-2}),Captura autocorrelacion de primer orden y reversion inmediata del tipo de cambio.
+Variable Predictora (X),PEN_log_ret_lag_2,Retorno logaritmico rezagado 2 dias habiles,ln(P_{t-2} / P_{t-3}),Mide el impulso o correccion de dos sesiones previas.
+Variable Predictora (X),PEN_log_ret_lag_3,Retorno logaritmico rezagado 3 dias habiles,ln(P_{t-3} / P_{t-4}),Refleja la dinamica intrasemanal de corto plazo (3 sesiones).
+Variable Predictora (X),PEN_log_ret_lag_5,Retorno logaritmico rezagado 5 dias habiles (1 semana),ln(P_{t-5} / P_{t-6}),Captura efectos de memoria de una semana bursatil.
+Variable Predictora (X),PEN_log_ret_lag_10,Retorno logaritmico rezagado 10 dias habiles (2 semanas),ln(P_{t-10} / P_{t-11}),Mide persistencia quincenal en las variaciones del sol.
+Variable Predictora (X),PEN_log_ret_lag_21,Retorno logaritmico rezagado 21 dias habiles (1 mes),ln(P_{t-21} / P_{t-22}),Captura ciclos mensuales de liquidez y cierre contable.
+Variable Predictora (X),price_vs_SMA_5,Distancia relativa a la Media Movil Simple de 5 dias,(P_{t-1} - SMA_5(P_{t-1})) / SMA_5(P_{t-1}),Mide sobrecompra/sobreventa frente al promedio de la ultima semana.
+Variable Predictora (X),price_vs_SMA_10,Distancia relativa a la Media Movil Simple de 10 dias,(P_{t-1} - SMA_10(P_{t-1})) / SMA_10(P_{t-1}),Desviacion porcentual frente a la tendencia de dos semanas bursatiles.
+Variable Predictora (X),price_vs_SMA_20,Distancia relativa a la Media Movil Simple de 20 dias,(P_{t-1} - SMA_20(P_{t-1})) / SMA_20(P_{t-1}),Desviacion porcentual frente al equilibrio promedio mensual.
+Variable Predictora (X),RSI,Indice de Fuerza Relativa de 14 sesiones normalizado,"(RSI_14(P_{t-1}) - 50) / 50 en [-1, 1]",Oscilador de velocidad y agotamiento de tendencia; valores cercanos a +1 indican sobrecompra y a -1 sobreventa.
+Variable Predictora (X),GARCH_vol,Volatilidad historica movil de 21 sesiones (Proxy GARCH),Desv. Estandar movil de 21 dias sobre r_{t-1},Cuantifica el regimen de incertidumbre y tension cambiaria reciente.
+Variable Predictora (X),MACD_line,Linea MACD normalizada (12 vs 26 sesiones),(EMA_12(P_{t-1}) - EMA_26(P_{t-1})) / P_{t-1},Diferencial de medias exponenciales rapida y lenta relativo al nivel del tipo de cambio.
+Variable Predictora (X),MACD_signal,Linea de Senal del MACD (EMA de 9 sesiones),EMA_9(MACD_line),Suavizamiento exponencial de la linea MACD que actua como umbral de cambio de tendencia.
+Variable Predictora (X),MACD_histogram,Histograma de divergencia MACD,MACD_line - MACD_signal,Mide la aceleracion del momento alcista o bajista del dolar.
+Variable Predictora (X),month_sin,Componente Seno del mes calendario,sin(2 * pi * mes / 12),"Codifica la estacionalidad anual (ej. pago de impuestos en marzo/abril, gratificaciones en julio/diciembre)."
+Variable Predictora (X),month_cos,Componente Coseno del mes calendario,cos(2 * pi * mes / 12),Complemento ortogonal del seno mensual para preservar continuidad entre diciembre y enero.
+Variable Predictora (X),day_of_week_sin,Componente Seno del dia de la semana,sin(2 * pi * dia_semana / 7),Captura patrones de liquidez intrasemanal (apertura de lunes vs cierre de viernes).
+Variable Predictora (X),day_of_week_cos,Componente Coseno del dia de la semana,cos(2 * pi * dia_semana / 7),Complemento ortogonal para representar ciclicamente el dia de la semana.
+Metrica de Evaluacion,horizonte_dias_habiles,Horizonte de pronostico (h),"h in {1, 5, 20} sesiones bursatiles","Plazo hacia adelante: 1 dia (diario), 5 dias (semanal) y 20 dias (mensual)."
+Metrica de Evaluacion,n_pronosticos,Numero de pronosticos evaluados en Holdout,"60 - h observaciones (59, 55 y 40)","Cantidad de pares (origen t, destino t+h) completamente contenidos en los 60 dias reservados."
+Metrica de Evaluacion,mae_cv_bp,MAE en Validacion Cruzada Temporal (pb),Promedio de |y - y_hat| en 3 cortes de 252 dias,Error absoluto medio en puntos basicos (1 pb = 0.01%) usado para elegir hiperparametros sin tocar el holdout.
+Metrica de Evaluacion,mae_precio_modelo_pen,MAE del Modelo en Nivel (Soles/USD),mean(|P_{t+h} - P_hat_{t+h}|),Error promedio directo en soles por dolar. Menor valor indica mayor precision cambiaria.
+Metrica de Evaluacion,mae_precio_baseline_pen,MAE de Caminata Aleatoria en Nivel (Soles/USD),mean(|P_{t+h} - P_t|),Error promedio de asumir que el tipo de cambio no variara entre t y t+h.
+Metrica de Evaluacion,rmse_precio_modelo_pen,RMSE del Modelo en Nivel (Soles/USD),sqrt(mean((P_{t+h} - P_hat_{t+h})^2)),Raiz del error cuadratico medio en soles/USD; penaliza con mayor severidad errores grandes.
+Metrica de Evaluacion,theil_u_rmse,Indice U de Theil (Ratio RMSE),RMSE_Modelo / RMSE_Caminata_Aleatoria,"Si U < 1, el modelo mejora a la caminata aleatoria en error cuadratico; si U > 1, no la supera."
+Metrica de Evaluacion,acierto_direccional_sin_ceros,Acierto Direccional (Hit Rate),Proporcion donde sign(retorno_real) == sign(retorno_predicho),Porcentaje de veces que el modelo anticipa correctamente si el dolar sube o baja (excluyendo variaciones nulas).
+Metrica de Evaluacion,r2_ret,Coeficiente de Determinacion R2 sobre Retornos,1 - SS_res / SS_tot,Fraccion de la varianza del retorno explicada fuera de muestra; valores negativos indican mayor error que la media.
