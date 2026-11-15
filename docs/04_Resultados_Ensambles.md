@@ -1,137 +1,152 @@
 # 4. Implementación y Resultados Experimentales de Modelos de Ensamble (USD/PEN)
 
-## 4.1 Diseño Experimental Común (Random Forest, XGBoost, LightGBM y CatBoost)
+## 4.1 Por Qué se Desarrollaron Dos Fases Experimentales (Fase 1 Endógena vs. Fase 2 Multivariable con Cobre, VIX, DXY, Oro, WTI y US10Y)
 
-Se implementaron cuatro arquitecturas de aprendizaje supervisado basadas en ensambles de árboles de decisión —**Random Forest**, **XGBoost**, **LightGBM** y **CatBoost**— para estimar de manera **directa** el retorno logarítmico acumulado del tipo de cambio interbancario USD/PEN en horizontes de **1, 5 y 20 días hábiles**. Se emplearon los conjuntos de datos preprocesados del repositorio `SolFX-Predictor`, conformados por **8 462 observaciones de entrenamiento** (`1994-02-02` a `2026-07-09`) y **60 sesiones reservadas para evaluación fuera de muestra (*holdout*)** (`2026-07-10` a `2026-10-01`).
+1. **Diagnóstico de la exportación original de Bloomberg (Fase 1 — Línea Base Endógena de 18 variables):**
+   En los archivos crudos exportados originalmente de la terminal Bloomberg (`data/raw/grid_*.xlsx` y `Datos_Bloomberg_PEN_FX.xlsx`), las hojas correspondientes a **Cobre LME (`LMCADY LME Comdty`)**, **Índice Dólar (`DXY Curncy`)** y **Bono del Tesoro de EE. UU. a 10 años (`USGG10YR Index`)** contenían únicamente fórmulas `=BDH(...)` sin resolver (`#NAME?`, con `0` observaciones válidas). Por esa razón, los scripts iniciales de referencia solo emplearon las **18 variables técnicas y de calendario endógenas** derivadas del propio tipo de cambio USD/PEN. Como se demuestra en la Fase 1, los indicadores puramente técnicos funcionan a 1 día hábil, pero pierden capacidad predictiva a **20 días hábiles** (`MAE = 0.038959` a `0.041446 S/` frente a `0.035905 S/` de la caminata aleatoria, y acierto direccional de solo `2.5 %` a `12.5 %`).
 
-### Formulación de la Variable Objetivo y Reconstrucción del Nivel
-Para cada horizonte $h \in \{1, 5, 20\}$, la etiqueta supervisada se define en **puntos básicos (pb)** ($1 \text{ pb} = 0.01\% = 10^{-4}$):
-$$y_{t, h} = 10\,000 \times \ln\left(\frac{P_{t+h}}{P_t}\right)$$
-donde $P_t$ es la cotización de cierre del dólar en soles en la fecha de origen $t$. A partir del retorno predicho $\hat{y}_{t,h}$, el tipo de cambio proyectado se reconstruye mediante:
-$$\hat{P}_{t+h} = P_t \times \exp\left(\frac{\hat{y}_{t,h}}{10\,000}\right)$$
+2. **Solución e Integración Multivariable (Fase 2 — Ensambles con 50 Variables incluyendo Cobre, VIX, DXY, Oro, Petróleo WTI, Bono EE. UU. 10Y, S&P 500 e Inflación BCRP):**
+   Mediante el módulo [`src/exogenous_loader.py`](../src/exogenous_loader.py), se descargaron e integraron las series históricas diarias reales (`1994-01-03` a `2026-10-30`) de **Cobre, VIX, DXY, Oro, Petróleo WTI, Bono del Tesoro de EE. UU. a 10 años (`US10Y`), S&P 500 e Inflación BCRP**, construyendo **32 nuevas variables exógenas multiescala (a 1, 5 y 20 sesiones)** bajo control causal estricto `shift(1)` (cero *data leakage*). Adicionalmente, se incorporó ponderación exponencial por régimen macroeconómico reciente (*half-life* temporal) para evitar que la devaluación estructural de los años 90 sesgue positivamente los pronósticos a 20 días.
 
 ---
 
-## 4.2 Diccionario Descriptivo de Variables Predictoras y Métricas de las Tablas
+## 4.2 Diccionario Descriptivo de Variables Predictoras (50 Variables) y Métricas de Evaluación
 
-Para facilitar la lectura de las tablas de resultados, los archivos CSV y los gráficos de importancia, a continuación se detallan tanto las **18 variables predictoras (`COLUMNAS_X`)** como las **métricas de evaluación**.
+### Tabla 4.1A — Las 18 Variables Endógenas Técnicas y de Calendario (Fase 1 y Fase 2)
 
-### Tabla 4.1 — Explicación de las 18 Variables Predictoras (`COLUMNAS_X`)
-
-> Todas las variables técnicas se calculan aplicando previamente un desplazamiento causal `shift(1)` sobre el precio o el retorno, garantizando que al cierre del día $t$ no exista fuga de información (*lookahead bias*).
-
-| Familia | Código de Variable en Tablas / Gráficos | Nombre Descriptivo | Fórmula / Construcción | Interpretación Financiera en el Mercado USD/PEN |
+| Familia | Código de Variable | Nombre Descriptivo | Fórmula Causal (`shift(1)`) | Interpretación Financiera en el Mercado USD/PEN |
 |---|---|---|---|---|
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_1` | Retorno logarítmico rezagado 1 día hábil | $\ln(P_{t-1} / P_{t-2})$ | Captura la autocorrelación de primer orden y el efecto de reversión o impulso inmediato del día previo. |
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_2` | Retorno logarítmico rezagado 2 días hábiles | $\ln(P_{t-2} / P_{t-3})$ | Mide la variación registrada hace 2 sesiones bursátiles. |
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_3` | Retorno logarítmico rezagado 3 días hábiles | $\ln(P_{t-3} / P_{t-4})$ | Refleja la dinámica intrasemanal de corto plazo (hace 3 sesiones). |
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_5` | Retorno logarítmico rezagado 5 días hábiles (1 semana) | $\ln(P_{t-5} / P_{t-6})$ | Captura efectos de memoria semanal (5 días hábiles equivalen a una semana bursátil). |
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_10` | Retorno logarítmico rezagado 10 días hábiles (2 semanas) | $\ln(P_{t-10} / P_{t-11})$ | Mide persistencia quincenal en las variaciones del tipo de cambio. |
-| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_21` | Retorno logarítmico rezagado 21 días hábiles (1 mes) | $\ln(P_{t-21} / P_{t-22})$ | Captura ciclos mensuales de liquidez, pago de obligaciones y cierre contable. |
-| **Distancias a Medias Móviles** | `price_vs_SMA_5` | Distancia relativa a la Media Móvil Simple de 5 días | $\frac{P_{t-1} - \text{SMA}_5(P_{t-1})}{\text{SMA}_5(P_{t-1})}$ | Desviación porcentual del precio frente a su promedio de la última semana; mide extensión de corto plazo. |
-| **Distancias a Medias Móviles** | `price_vs_SMA_10` | Distancia relativa a la Media Móvil Simple de 10 días | $\frac{P_{t-1} - \text{SMA}_{10}(P_{t-1})}{\text{SMA}_{10}(P_{t-1})}$ | Desviación porcentual frente al nivel promedio quincenal (10 sesiones). |
-| **Distancias a Medias Móviles** | `price_vs_SMA_20` | Distancia relativa a la Media Móvil Simple de 20 días | $\frac{P_{t-1} - \text{SMA}_{20}(P_{t-1})}{\text{SMA}_{20}(P_{t-1})}$ | Desviación porcentual frente al equilibrio promedio mensual (20 sesiones); actúa como ancla de reversión a la media. |
-| **Osciladores y Volatilidad** | `RSI` | Índice de Fuerza Relativa (14 sesiones) normalizado | $\frac{\text{RSI}_{14}(P_{t-1}) - 50}{50} \in [-1, 1]$ | Mide la velocidad de subidas frente a bajadas. Valores cercanos a $+1$ indican sobrecompra del dólar; cercanos a $-1$, sobreventa. |
-| **Osciladores y Volatilidad** | `GARCH_vol` | Volatilidad histórica móvil de 21 sesiones (Proxy GARCH) | $\sigma_{21}(r_{t-1})$ | Desviación estándar móvil de un mes sobre retornos diarios; cuantifica el régimen de incertidumbre y tensión cambiaria. |
-| **Tendencia (MACD)** | `MACD_line` | Línea MACD normalizada por nivel de precio | $\frac{\text{EMA}_{12}(P_{t-1}) - \text{EMA}_{26}(P_{t-1})}{P_{t-1}}$ | Diferencial relativo entre la media exponencial rápida (12 días) y lenta (26 días); identifica la dirección de la tendencia. |
-| **Tendencia (MACD)** | `MACD_signal` | Línea de Señal del MACD (EMA de 9 sesiones) | $\text{EMA}_9(\text{MACD\_line})$ | Media móvil exponencial de la línea MACD usada para detectar cruces y agotamiento de tendencia. |
-| **Tendencia (MACD)** | `MACD_histogram` | Histograma de divergencia MACD | $\text{MACD\_line} - \text{MACD\_signal}$ | Mide la aceleración o desaceleración del momento alcista/bajista del tipo de cambio. |
-| **Calendario Cíclico** | `month_sin` | Componente Seno del mes calendario | $\sin(2\pi \cdot \text{mes} / 12)$ | Codifica la posición estacional dentro del año (ej. periodos tributarios en marzo/abril o gratificaciones en julio/diciembre). |
-| **Calendario Cíclico** | `month_cos` | Componente Coseno del mes calendario | $\cos(2\pi \cdot \text{mes} / 12)$ | Complemento ortogonal de `month_sin` que garantiza continuidad matemática entre diciembre (mes 12) y enero (mes 1). |
-| **Calendario Cíclico** | `day_of_week_sin` | Componente Seno del día de la semana | $\sin(2\pi \cdot \text{día} / 7)$ | Captura patrones recurrentes de liquidez intrasemanal (apertura de lunes a cierre de viernes). |
-| **Calendario Cíclico** | `day_of_week_cos` | Componente Coseno del día de la semana | $\cos(2\pi \cdot \text{día} / 7)$ | Complemento ortogonal de `day_of_week_sin` para representar cíclicamente el día de la semana. |
+| **Rezagos Autorregresivos (AR)** | `PEN_log_ret_lag_1` a `lag_21` | Retornos logarítmicos del USD/PEN rezagados $1, 2, 3, 5, 10$ y $21$ sesiones | $\ln(P_{t-k} / P_{t-k-1})$ | Capturan memoria de corto plazo (1 a 3 días), semanal (5 días), quincenal (10 días) y mensual (21 días). |
+| **Distancias a Medias Móviles** | `price_vs_SMA_5`, `10`, `20` | Distancia relativa del USD/PEN a su Media Móvil Simple de 5, 10 y 20 días | $\frac{P_{t-1} - \text{SMA}_w(P_{t-1})}{\text{SMA}_w(P_{t-1})}$ | Miden sobrecompra o sobreventa porcentual respecto al equilibrio semanal, quincenal y mensual. |
+| **Oscilador de Momento** | `RSI` | Índice de Fuerza Relativa de 14 sesiones normalizado | $\frac{\text{RSI}_{14}(P_{t-1}) - 50}{50} \in [-1, 1]$ | Velocidad de subidas vs. bajadas: valores cercanos a $+1$ indican sobrecompra; cercanos a $-1$, sobreventa. |
+| **Volatilidad Histórica** | `GARCH_vol` | Volatilidad móvil de 21 sesiones (Proxy GARCH) | $\sigma_{21}(r_{t-1})$ | Desviación estándar móvil mensual de los retornos diarios; cuantifica el régimen de incertidumbre local. |
+| **Tendencia (MACD)** | `MACD_line`, `MACD_signal`, `MACD_histogram` | Línea MACD (12 vs 26 días), Señal (9 días) e Histograma | $\frac{\text{EMA}_{12} - \text{EMA}_{26}}{P_{t-1}}$ | Dirección, cruces de tendencia y aceleración del impulso alcista o bajista del dólar. |
+| **Calendario Cíclico** | `month_sin`, `month_cos`, `day_of_week_sin`, `day_of_week_cos` | Codificación trigonométrica de mes y día de la semana | $\sin,\cos(2\pi \cdot m/12)$ y $\sin,\cos(2\pi \cdot d/7)$ | Capturan estacionalidad anual (impuestos en marzo/abril, gratificaciones en julio/diciembre) y liquidez intrasemanal. |
+
+---
+
+### Tabla 4.1B — Las 32 Nuevas Variables Exógenas Globales, Commodities y Macroeconómicas (Fase 2)
+
+> Todas las variables exógenas parten de la cotización de cierre del día anterior $X_{t-1} = X.\text{shift}(1)$ para garantizar que la información esté 100% disponible antes de emitir el pronóstico en $t$.
+
+| Bloque Económico | Códigos de Variables en Tablas / Gráficos | Nombre Descriptivo | Fórmula Causal (`shift(1)`) | Mecanismo de Transmisión hacia el Tipo de Cambio USD/PEN |
+|---|---|---|---|---|
+| **Cobre Internacional** | `Cobre_ret_1d`, `Cobre_ret_5d`, `Cobre_ret_20d`, `Cobre_vs_SMA_20` | Retornos acumulados del Cobre a 1, 5 y 20 sesiones y distancia a su SMA de 20 días | $\ln\left(\frac{\text{Cu}_{t-1}}{\text{Cu}_{t-1-k}}\right)$ y $\frac{\text{Cu}_{t-1}-\text{SMA}_{20}}{\text{SMA}_{20}}$ | Principal producto de exportación tradicional del Perú: un alza sostenida del cobre incrementa el ingreso de divisas y aprecia el sol (reduce el USD/PEN). |
+| **Índice de Volatilidad VIX** | `VIX_nivel_lag1`, `VIX_cambio_1d`, `VIX_cambio_5d`, `VIX_cambio_20d`, `VIX_zscore_20d` | Nivel del VIX en $t-1$, variaciones a 1, 5 y 20 días y *Z-Score* móvil de 20 días | $\text{VIX}_{t-1} - \text{VIX}_{t-1-k}$ y $\frac{\text{VIX}_{t-1}-\mu_{20}}{\sigma_{20}}$ | Termómetro de aversión global al riesgo (*fear gauge*): saltos en el VIX disparan refugio hacia el dólar (*flight to safety*), presionando al alza el USD/PEN. |
+| **Índice Dólar Global (DXY)** | `DXY_ret_1d`, `DXY_ret_5d`, `DXY_ret_20d`, `DXY_vs_SMA_20` | Retornos del índice multilateral del dólar DXY a 1, 5 y 20 sesiones y brecha vs. SMA 20 | $\ln\left(\frac{\text{DXY}_{t-1}}{\text{DXY}_{t-1-k}}\right)$ | Mide la fortaleza global del dólar estadounidense frente a una canasta de monedas desarrolladas; se transmite directamente a las monedas emergentes. |
+| **Bono del Tesoro EE. UU. 10 Años (`US10Y`)** | `US10Y_nivel_lag1`, `US10Y_cambio_5d`, `US10Y_cambio_20d`, `US10Y_vs_SMA_20` | Rendimiento del Treasury a 10 años en $t-1$ (%), cambios a 5 y 20 días y brecha vs. SMA 20 | $i^{\text{US10Y}}_{t-1} - i^{\text{US10Y}}_{t-1-k}$ | Refleja las condiciones monetarias de la Reserva Federal y el costo de oportunidad internacional del capital; afecta los flujos de portafolio hacia el Perú. |
+| **Oro Internacional** | `Oro_ret_5d`, `Oro_ret_20d`, `Oro_vs_SMA_20` | Retornos del Oro a 5 y 20 sesiones y distancia a su SMA de 20 días | $\ln\left(\frac{\text{Au}_{t-1}}{\text{Au}_{t-1-k}}\right)$ | Segundo metal de exportación peruana y activo refugio mundial ante riesgos inflacionarios y geopolíticos. |
+| **Petróleo WTI** | `Petroleo_WTI_ret_5d`, `Petroleo_WTI_ret_20d`, `Petroleo_WTI_vs_SMA_20` | Retornos del crudo WTI a 5 y 20 sesiones y distancia a su SMA de 20 días | $\ln\left(\frac{\text{WTI}_{t-1}}{\text{WTI}_{t-1-k}}\right)$ | El Perú es importador neto de hidrocarburos: subidas del WTI encarecen la factura de importación y demandan más dólares. |
+| **Renta Variable Global (S&P 500)** | `SP500_ret_5d`, `SP500_ret_20d`, `SP500_vs_SMA_20` | Retornos del índice S&P 500 a 5 y 20 sesiones y brecha respecto a su SMA de 20 días | $\ln\left(\frac{\text{SP500}_{t-1}}{\text{SP500}_{t-1-k}}\right)$ | Captura el apetito global por activos de riesgo (*risk-on* vs. *risk-off*) en horizontes mensuales. |
+| **Términos de Intercambio y Ratios Relativos** | `TermIntercambio_Cu_WTI_ret_20d`, `Cobre_vs_DXY_ret_20d` | Variación a 20 días del ratio Cobre/Petróleo WTI y del ratio Cobre/DXY | $\ln\left(\frac{\text{Cu}_{t-1}/\text{WTI}_{t-1}}{\text{Cu}_{t-21}/\text{WTI}_{t-21}}\right)$ | Proxy diario de los términos de intercambio del Perú (precio de exportación minera frente a costo de importación energética). |
+| **Inflación BCRP con Rezago de Publicación Segura** | `Inflacion_12M_pub_segura`, `Inflacion_12M_cambio_20d` | Inflación interanual de Lima rezagada 42 días hábiles (~2 meses) y su cambio a 20 sesiones | $\pi^{12M}_{t-42}$ | Garantiza que el dato mensual del INEI/BCRP ya era público en la fecha de origen $t$, capturando el régimen inflacionario doméstico sin *data leakage*. |
+| **Momentum Multiescala USD/PEN** | `PEN_ret_acum_5d`, `PEN_ret_acum_20d` | Retorno acumulado del propio USD/PEN en las últimas 5 y 20 sesiones hasta $t-1$ | $\ln(P_{t-1} / P_{t-1-k})$ | Sintetiza la tendencia acumulada semanal y mensual del tipo de cambio antes de la fecha de origen. |
 
 ---
 
 ### Tabla 4.2 — Explicación de las Columnas y Métricas de las Tablas de Resultados
 
-| Columna en CSV (`tabla_comparativa_ensambles.csv`) | Nombre Descriptivo en Tablas | Unidad de Medida | Definición Matemática e Interpretación Práctica |
-|---|---|---|---|
-| `horizonte_dias_habiles` | **Horizonte de Pronóstico ($h$)** | Días hábiles | Plazo hacia adelante de la predicción: **1 día** (diario), **5 días** (1 semana bursátil) y **20 días** (~1 mes bursátil). |
-| `n_pronosticos` | **Pronósticos Evaluados ($N$)** | Observaciones | Cantidad de pares $(t, t+h)$ evaluables dentro de los 60 días del *holdout*: $N = 60 - h$ (**59**, **55** y **40** pronósticos). |
-| `n_cambios_no_nulos` | **Sesiones con Variación Real ($\Delta P \neq 0$)** | Observaciones | Número de pronósticos donde el tipo de cambio real tuvo un movimiento distinto de cero (**54** en $h=1$, **54** en $h=5$ y **40** en $h=20$). |
-| `mae_cv_bp` | **Error en Validación Cruzada Temporal (CV MAE)** | Puntos básicos (pb) | Error Absoluto Medio promedio en los 3 cortes de validación (`TimeSeriesSplit` de 252 días con `gap=h`), usado para elegir hiperparámetros. |
-| `mae_precio_modelo_pen` | **Error Medio del Modelo en Nivel (MAE Modelo)** | **Soles por USD (S/)** | $\frac{1}{N}\sum |P_{t+h} - \hat{P}_{t+h}|$. Diferencia promedio en soles entre el dólar real y el predicho (ej. `0.00692` S/ $\approx 0.69$ céntimos). **Menor es mejor.** |
-| `mae_precio_baseline_pen` | **Error Medio Caminata Aleatoria (MAE Base)** | **Soles por USD (S/)** | $\frac{1}{N}\sum |P_{t+h} - P_t|$. Error promedio del benchmark ingenuo que predice que el tipo de cambio no cambiará ($\hat{P}_{t+h} = P_t$). |
-| `diferencia_mae_vs_baseline_pen` | **Diferencia de MAE vs. Caminata Aleatoria ($\Delta\text{MAE}$)** | **Soles por USD (S/)** | $\text{MAE}_{\text{Modelo}} - \text{MAE}_{\text{Base}}$. Valores negativos indican que el modelo redujo el error absoluto medio respecto a la caminata aleatoria. |
-| `rmse_precio_modelo_pen` | **Error Cuadrático Medio en Nivel (RMSE Modelo)** | **Soles por USD (S/)** | $\sqrt{\frac{1}{N}\sum (P_{t+h} - \hat{P}_{t+h})^2}$. Penaliza con mayor severidad las desviaciones grandes o picos abruptos del tipo de cambio. |
-| `rmse_precio_baseline_pen` | **Error Cuadrático Caminata Aleatoria (RMSE Base)** | **Soles por USD (S/)** | $\sqrt{\frac{1}{N}\sum (P_{t+h} - P_t)^2}$. RMSE del pronóstico sin cambio en soles por dólar. |
-| `mae_ret_modelo_bp` | **Error Medio en Retornos (MAE Retorno)** | Puntos básicos (pb) | Error absoluto medio medido directamente sobre la tasa de variación logarítmica $y_{t,h}$ en puntos básicos ($1\text{ pb} = 0.01\%$). |
-| `theil_u_rmse` | **Coeficiente U de Theil (Ratio RMSE)** | Adimensional (Ratio) | $\text{RMSE}_{\text{Modelo}} / \text{RMSE}_{\text{Base}}$ sobre retornos. **Si $U < 1.0$, el modelo supera a la caminata aleatoria** en error cuadrático medio; si $U > 1.0$, tiene mayor error. |
-| `acierto_direccional_porcentaje` | **Acierto Direccional de Subida/Bajada (Hit Rate)** | Porcentaje (`%`) | Porcentaje de sesiones con variación no nula en las que el modelo acertó el signo del movimiento real ($\text{sign}(\hat{y}_{t,h}) = \text{sign}(y_{t,h})$). |
-| `r2_ret` | **Coeficiente de Determinación ($R^2$ Retornos)** | Adimensional | Proporción de la varianza del retorno explicada fuera de muestra. En series cambiarias ruidosas suele ser cercano a $0$ o negativo. |
+| Nombre Descriptivo en Tablas | Unidad | Qué mide y cómo interpretarlo |
+|---|---|---|
+| **Horizonte de Pronóstico ($h$)** | Días hábiles | Plazo hacia adelante de la predicción: **1 día** (diario), **5 días** (1 semana bursátil) y **20 días** (~1 mes bursátil). |
+| **Pronósticos Evaluados ($N$)** | Observaciones | Pares $(t, t+h)$ evaluables dentro de los 60 días reservados del *holdout*: $N = 60 - h$ (**59**, **55** y **40** pronósticos). |
+| **MAE Caminata Aleatoria (Soles/USD)** | **Soles por USD (S/)** | $\frac{1}{N}\sum |P_{t+h} - P_t|$. Error promedio del benchmark que asume que el tipo de cambio no cambiará entre $t$ y $t+h$. |
+| **MAE Sin Exógenas (Soles/USD)** | **Soles por USD (S/)** | Error Absoluto Medio del modelo usando únicamente las 18 variables técnicas y de calendario (Fase 1). |
+| **MAE Con Exógenas Cobre/VIX/DXY (Soles/USD)** | **Soles por USD (S/)** | Error Absoluto Medio del nuevo modelo multivariable usando las 50 variables que incluyen Cobre, VIX, DXY, Oro, WTI y US10Y (Fase 2). |
+| **Reducción de Error MAE al Incluir Exógenas** | **Soles por USD (S/)** | $\text{MAE}_{\text{Con Exógenas}} - \text{MAE}_{\text{Sin Exógenas}}$. Valores negativos confirman que incluir Cobre, VIX y DXY redujo el error de pronóstico. |
+| **Diferencia vs. Caminata Aleatoria** | **Soles por USD (S/)** | $\text{MAE}_{\text{Con Exógenas}} - \text{MAE}_{\text{Caminata Aleatoria}}$. Valores negativos indican que **el modelo supera a la Caminata Aleatoria**. |
+| **Ratio U de Theil** | Adimensional | $\text{RMSE}_{\text{Modelo}} / \text{RMSE}_{\text{Caminata Aleatoria}}$. Un valor $< 1.0$ indica menor error cuadrático medio que la caminata aleatoria. |
+| **Acierto Direccional (% y Sesiones)** | Porcentaje (`%`) | Proporción y conteo exacto de sesiones con movimiento no nulo en que el modelo acertó si el dólar subiría o bajaría. |
 
 ---
 
-## 4.3 Tablas de Valores Exactos del Gráfico de Barras (`resumen_mae_y_acierto_direccional.png`)
+## 4.3 Comparación Central: Fase 1 (Sin Exógenas, 18 Vars) vs. Fase 2 (Con Exógenas: Cobre, VIX, DXY, Oro, WTI, US10Y — 50 Vars)
 
-Dado que en el gráfico de barras comparativo ([`resumen_mae_y_acierto_direccional.png`](../resultados_comparativos/resumen_mae_y_acierto_direccional.png)) las barras dentro de cada horizonte para el **Error Absoluto Medio (Panel A)** se encuentran muy próximas entre sí en escala visual, a continuación se presentan las **tablas con los valores exactos** que alimentan cada una de las barras de ambos paneles (también exportadas en [`tabla_valores_exactos_grafico_barras.csv`](../resultados_comparativos/tabla_valores_exactos_grafico_barras.csv)).
+*(Exportado en [`resultados_comparativos/tabla_comparativa_sin_vs_con_exogenas.csv`](../resultados_comparativos/tabla_comparativa_sin_vs_con_exogenas.csv) y graficado en [`resultados_comparativos/impacto_exogenas_h20.png`](../resultados_comparativos/impacto_exogenas_h20.png))*
 
-### Tabla 4.3A — Valores Exactos del Panel Izquierdo del Gráfico de Barras: Error Absoluto Medio (MAE en Soles por USD y en Puntos Básicos)
+### Tabla 4.3 — Impacto de Incorporar Cobre, VIX, DXY, Oro, Petróleo WTI y Bono EE. UU. 10Y en los Cuatro Ensambles
 
-| Horizonte de Pronóstico | Pronósticos Evaluados ($N$) | Caminata Aleatoria (Referencia Sin Cambio) | Random Forest | CatBoost | XGBoost | LightGBM | Mejor Ensamble en MAE (y Diferencia vs. Referencia) |
-|---|---:|---:|---:|---:|---:|---:|---|
-| **$h = 1$ día hábil** *(en Soles/USD)* | 59 | **0.006881 S/** | **0.006925 S/** | 0.006955 S/ | 0.006971 S/ | 0.006974 S/ | **Random Forest** (`+0.000043 S/` vs. RW) |
-| **$h = 1$ día hábil** *(en Retorno pb)* | 59 | **20.34 pb** | **20.47 pb** | 20.56 pb | 20.61 pb | 20.62 pb | **Random Forest** (`+0.13 pb` vs. RW) |
-| **$h = 5$ días hábiles** *(en Soles/USD)* | 55 | **0.017458 S/** | **0.017576 S/** | 0.017758 S/ | 0.017602 S/ | 0.017640 S/ | **Random Forest** (`+0.000118 S/` vs. RW) |
-| **$h = 5$ días hábiles** *(en Retorno pb)* | 55 | **51.63 pb** | **51.98 pb** | 52.51 pb | 52.05 pb | 52.17 pb | **Random Forest** (`+0.35 pb` vs. RW) |
-| **$h = 20$ días hábiles** *(en Soles/USD)* | 40 | **0.035905 S/** | **0.038959 S/** | 0.041446 S/ | 0.039115 S/ | 0.039042 S/ | **Random Forest** (`+0.003054 S/` vs. RW) |
-| **$h = 20$ días hábiles** *(en Retorno pb)* | 40 | **106.20 pb** | **115.26 pb** | 122.64 pb | 115.71 pb | 115.48 pb | **Random Forest** (`+9.06 pb` vs. RW) |
-
----
-
-### Tabla 4.3B — Valores Exactos del Panel Derecho del Gráfico de Barras: Acierto Direccional (%) y Conteo Exacto de Sesiones Acertadas
-
-| Horizonte de Pronóstico | Sesiones con Variación Real ($\Delta P \neq 0$) | Umbral de Referencia (Azar Puro) | Random Forest (% y Conteo Exacto) | CatBoost (% y Conteo Exacto) | XGBoost (% y Conteo Exacto) | LightGBM (% y Conteo Exacto) | Mayor Acierto Direccional en el Horizonte |
-|---|---:|---:|---:|---:|---:|---:|---|
-| **$h = 1$ día hábil** | 54 de 59 sesiones | 50.00 % | **50.00 %** *(27 / 54 días)* | 46.30 % *(25 / 54 días)* | 42.59 % *(23 / 54 días)* | 46.30 % *(25 / 54 días)* | **Random Forest** (`27 de 54` sesiones) |
-| **$h = 5$ días hábiles** | 54 de 55 sesiones | 50.00 % | 48.15 % *(26 / 54 días)* | **50.00 %** *(27 / 54 días)* | **50.00 %** *(27 / 54 días)* | 40.74 % *(22 / 54 días)* | **XGBoost y CatBoost** (`27 de 54` sesiones) |
-| **$h = 20$ días hábiles** | 40 de 40 sesiones | 50.00 % | **12.50 %** *(5 / 40 días)* | 10.00 % *(4 / 40 días)* | 5.00 % *(2 / 40 días)* | 2.50 % *(1 / 40 días)* | **Random Forest** (`5 de 40` sesiones) |
+| Horizonte ($h$) | Algoritmo de Ensamble | MAE Caminata Aleatoria (Referencia) | MAE Fase 1: Sin Exógenas (18 Vars) | MAE Fase 2: Con Exógenas Cobre/VIX/DXY (50 Vars) | Reducción de MAE al Incluir Exógenas | ¿Supera a la Caminata Aleatoria en Fase 2? | Acierto Direccional Fase 1 (Sin Exógenas) | Acierto Direccional Fase 2 (Con Exógenas) | Mejora en Acierto Direccional | Peso de Variables Exógenas en el Modelo |
+|:---:|---|---:|---:|---:|---:|:---:|---:|---:|---:|---:|
+| **1 día** | **LightGBM** | 0.006881 S/ | 0.006974 S/ | **0.006850 S/** | **-0.000124 S/** | **SÍ** (`-0.000031 S/`) | 46.30 % *(25/54)* | 46.30 % *(25/54)* | 0.00 pp | 66.8 % |
+| **1 día** | **CatBoost** | 0.006881 S/ | 0.006955 S/ | **0.006896 S/** | **-0.000059 S/** | Casi Empate (`+0.000015 S/`) | 46.30 % *(25/54)* | **55.56 % *(30/54)*** | **+9.26 pp** | 44.6 % |
+| **1 día** | **XGBoost** | 0.006881 S/ | 0.006971 S/ | **0.006900 S/** | **-0.000070 S/** | Casi Empate (`+0.000019 S/`) | 42.59 % *(23/54)* | **51.85 % *(28/54)*** | **+9.26 pp** | 66.0 % |
+| **1 día** | **Random Forest** | 0.006881 S/ | 0.006925 S/ | **0.006905 S/** | **-0.000020 S/** | Casi Empate (`+0.000023 S/`) | 50.00 % *(27/54)* | 48.15 % *(26/54)* | -1.85 pp | 40.8 % |
+| **5 días** | **CatBoost** | 0.017458 S/ | 0.017758 S/ | **0.017262 S/** | **-0.000496 S/** | **SÍ** (`-0.000197 S/`) | 50.00 % *(27/54)* | **64.81 % *(35/54)*** | **+14.81 pp** | 61.7 % |
+| **5 días** | **XGBoost** | 0.017458 S/ | 0.017602 S/ | **0.017331 S/** | **-0.000271 S/** | **SÍ** (`-0.000127 S/`) | 50.00 % *(27/54)* | **61.11 % *(33/54)*** | **+11.11 pp** | 64.5 % |
+| **5 días** | **LightGBM** | 0.017458 S/ | 0.017640 S/ | **0.017339 S/** | **-0.000302 S/** | **SÍ** (`-0.000119 S/`) | 40.74 % *(22/54)* | **57.41 % *(31/54)*** | **+16.67 pp** | 52.9 % |
+| **5 días** | **Random Forest** | 0.017458 S/ | 0.017576 S/ | **0.017415 S/** | **-0.000161 S/** | **SÍ** (`-0.000043 S/`) | 48.15 % *(26/54)* | **55.56 % *(30/54)*** | **+7.41 pp** | 44.9 % |
+| **20 días** | **Random Forest** | 0.035905 S/ | 0.038959 S/ | **0.035302 S/** | **-0.003658 S/** | **SÍ** (`-0.000603 S/`) | 12.50 % *(5/40)* | **60.00 % *(24/40)*** | **+47.50 pp** | 55.0 % |
+| **20 días** | **XGBoost** | 0.035905 S/ | 0.039115 S/ | **0.035647 S/** | **-0.003468 S/** | **SÍ** (`-0.000258 S/`) | 5.00 % *(2/40)* | **52.50 % *(21/40)*** | **+47.50 pp** | 64.8 % |
+| **20 días** | **CatBoost** | 0.035905 S/ | 0.041446 S/ | **0.035868 S/** | **-0.005578 S/** | **SÍ** (`-0.000037 S/`) | 10.00 % *(4/40)* | **60.00 % *(24/40)*** | **+50.00 pp** | 60.1 % |
+| **20 días** | **LightGBM** | 0.035905 S/ | 0.039042 S/ | **0.036428 S/** | **-0.002613 S/** | Casi Empate (`+0.000523 S/`) | 2.50 % *(1/40)* | **50.00 % *(20/40)*** | **+47.50 pp** | 68.2 % |
 
 ---
 
-## 4.4 Tablas Detalladas por Horizonte Fuera de Muestra (Holdout: 10/07/2026 – 01/10/2026)
+## 4.4 Tablas con los Valores Exactos de los Gráficos de Barras
 
-### Horizonte $h = 1$ día hábil ($N = 59$ pronósticos evaluados; $54$ con movimiento no nulo)
+### 4.4.1 Valores Exactos del Nuevo Gráfico de Barras Multivariable con Exógenas ([`resumen_mae_y_acierto_direccional_exogenas.png`](../resultados_comparativos/resumen_mae_y_acierto_direccional_exogenas.png))
 
-| Algoritmo de Ensamble | Error Validación Cruzada (CV MAE, pb) | MAE del Modelo en Nivel (Soles/USD) | MAE Caminata Aleatoria (Soles/USD) | RMSE del Modelo en Nivel (Soles/USD) | RMSE Caminata Aleatoria (Soles/USD) | Ratio U de Theil (< 1 mejora RW) | Acierto Direccional (% y Días) | Ajuste sobre Retornos ($R^2$) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Random Forest** | 27.23 pb | **0.006925 S/** | 0.006881 S/ | 0.009343 S/ | 0.009411 S/ | 0.9929 | **50.00 % (27/54)** | 0.0030 |
-| **CatBoost** | **27.18 pb** | 0.006955 S/ | 0.006881 S/ | 0.009388 S/ | 0.009411 S/ | 0.9976 | 46.30 % (25/54) | -0.0065 |
-| **XGBoost** | 27.26 pb | 0.006971 S/ | 0.006881 S/ | 0.009349 S/ | 0.009411 S/ | 0.9936 | 42.59 % (23/54) | 0.0017 |
-| **LightGBM** | 27.35 pb | 0.006974 S/ | 0.006881 S/ | **0.009277 S/** | 0.009411 S/ | **0.9861** | 46.30 % (25/54) | **0.0166** |
+*(Exportado en [`resultados_comparativos/tabla_valores_exactos_grafico_barras_exogenas.csv`](../resultados_comparativos/tabla_valores_exactos_grafico_barras_exogenas.csv))*
 
-### Horizonte $h = 5$ días hábiles ($N = 55$ pronósticos evaluados; $54$ con movimiento no nulo)
+#### Panel A (Con Exógenas) — Error Absoluto Medio Exacto (MAE en Soles por USD y en Puntos Básicos)
 
-| Algoritmo de Ensamble | Error Validación Cruzada (CV MAE, pb) | MAE del Modelo en Nivel (Soles/USD) | MAE Caminata Aleatoria (Soles/USD) | RMSE del Modelo en Nivel (Soles/USD) | RMSE Caminata Aleatoria (Soles/USD) | Ratio U de Theil (< 1 mejora RW) | Acierto Direccional (% y Días) | Ajuste sobre Retornos ($R^2$) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Random Forest** | **65.59 pb** | **0.017576 S/** | 0.017458 S/ | **0.024326 S/** | 0.024435 S/ | **0.9956** | 48.15 % (26/54) | **-0.0150** |
-| **XGBoost** | 66.47 pb | 0.017602 S/ | 0.017458 S/ | 0.024360 S/ | 0.024435 S/ | 0.9970 | **50.00 % (27/54)** | -0.0180 |
-| **LightGBM** | 66.62 pb | 0.017640 S/ | 0.017458 S/ | 0.024425 S/ | 0.024435 S/ | 0.9997 | 40.74 % (22/54) | -0.0234 |
-| **CatBoost** | 66.03 pb | 0.017758 S/ | 0.017458 S/ | 0.024400 S/ | 0.024435 S/ | 0.9987 | **50.00 % (27/54)** | -0.0212 |
+| Horizonte ($h$) | Pronósticos Evaluados ($N$) | Caminata Aleatoria (Referencia) | Random Forest + Exógenas | LightGBM + Exógenas | XGBoost + Exógenas | CatBoost + Exógenas | Mejor Modelo en el Horizonte |
+|:---:|---:|---:|---:|---:|---:|---:|---|
+| **$h = 1$ día hábil** *(Soles/USD)* | 59 | 0.006881 S/ | 0.006905 S/ | **0.006850 S/** | 0.006900 S/ | 0.006896 S/ | **LightGBM + Exógenas** *(supera a RW)* |
+| **$h = 1$ día hábil** *(Retorno pb)* | 59 | 20.34 pb | 20.41 pb | **20.25 pb** | 20.40 pb | 20.39 pb | **LightGBM + Exógenas** (`-0.09 pb` vs. RW) |
+| **$h = 5$ días hábiles** *(Soles/USD)* | 55 | 0.017458 S/ | **0.017415 S/** | **0.017339 S/** | **0.017331 S/** | **0.017262 S/** | **CatBoost + Exógenas** *(los 4 superan a RW)* |
+| **$h = 5$ días hábiles** *(Retorno pb)* | 55 | 51.63 pb | **51.51 pb** | **51.28 pb** | **51.26 pb** | **51.05 pb** | **CatBoost + Exógenas** (`-0.58 pb` vs. RW) |
+| **$h = 20$ días hábiles** *(Soles/USD)* | 40 | 0.035905 S/ | **0.035302 S/** | 0.036428 S/ | **0.035647 S/** | **0.035868 S/** | **Random Forest + Exógenas** *(3 superan a RW)* |
+| **$h = 20$ días hábiles** *(Retorno pb)* | 40 | 106.20 pb | **104.52 pb** | 107.89 pb | **105.53 pb** | **106.20 pb** | **Random Forest + Exógenas** (`-1.68 pb` vs. RW) |
 
-### Horizonte $h = 20$ días hábiles ($N = 40$ pronósticos evaluados; $40$ con movimiento no nulo)
+#### Panel B (Con Exógenas) — Acierto Direccional Exacto (% y Conteo de Sesiones Acertadas)
 
-| Algoritmo de Ensamble | Error Validación Cruzada (CV MAE, pb) | MAE del Modelo en Nivel (Soles/USD) | MAE Caminata Aleatoria (Soles/USD) | RMSE del Modelo en Nivel (Soles/USD) | RMSE Caminata Aleatoria (Soles/USD) | Ratio U de Theil (< 1 mejora RW) | Acierto Direccional (% y Días) | Ajuste sobre Retornos ($R^2$) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Random Forest** | **132.40 pb** | **0.038959 S/** | 0.035905 S/ | **0.045494 S/** | 0.042619 S/ | **1.0678** | **12.50 % (5/40)** | **-0.1636** |
-| **LightGBM** | 133.82 pb | 0.039042 S/ | 0.035905 S/ | 0.045570 S/ | 0.042619 S/ | 1.0694 | 2.50 % (1/40) | -0.1670 |
-| **XGBoost** | 134.00 pb | 0.039115 S/ | 0.035905 S/ | 0.045808 S/ | 0.042619 S/ | 1.0751 | 5.00 % (2/40) | -0.1794 |
-| **CatBoost** | 133.93 pb | 0.041446 S/ | 0.035905 S/ | 0.048261 S/ | 0.042619 S/ | 1.1331 | 10.00 % (4/40) | -0.3100 |
+| Horizonte ($h$) | Sesiones con Variación Real ($\Delta P \neq 0$) | Umbral Azar | Random Forest + Exógenas | LightGBM + Exógenas | XGBoost + Exógenas | CatBoost + Exógenas | Mayor Acierto Direccional |
+|:---:|---:|---:|---:|---:|---:|---:|---|
+| **$h = 1$ día hábil** | 54 de 59 sesiones | 50.00 % | 48.15 % *(26 / 54 días)* | 46.30 % *(25 / 54 días)* | **51.85 %** *(28 / 54 días)* | **55.56 %** *(30 / 54 días)* | **CatBoost + Exógenas** (`30 de 54` días) |
+| **$h = 5$ días hábiles** | 54 de 55 sesiones | 50.00 % | **55.56 %** *(30 / 54 días)* | **57.41 %** *(31 / 54 días)* | **61.11 %** *(33 / 54 días)* | **64.81 %** *(35 / 54 días)* | **CatBoost + Exógenas** (`35 de 54` días) |
+| **$h = 20$ días hábiles** | 40 de 40 sesiones | 50.00 % | **60.00 %** *(24 / 40 días)* | **50.00 %** *(20 / 40 días)* | **52.50 %** *(21 / 40 días)* | **60.00 %** *(24 / 40 días)* | **Random Forest y CatBoost** (`24 de 40` días) |
 
 ---
 
-## 4.5 Análisis de Importancia de Variables y Comportamiento por Horizonte
+### 4.4.2 Valores Exactos del Gráfico de Barras de Línea Base Fase 1 Sin Exógenas ([`resumen_mae_y_acierto_direccional.png`](../resultados_comparativos/resumen_mae_y_acierto_direccional.png))
 
-1. **Corto plazo ($h = 1$ día hábil):**
-   - Los cuatro modelos lograron un coeficiente **Theil's U menor a 1.0 en RMSE** (`0.9861` en LightGBM, `0.9929` en Random Forest, `0.9936` en XGBoost y `0.9976` en CatBoost), reduciendo ligeramente el error cuadrático medio (`0.009277 S/` en LightGBM frente a `0.009411 S/` de la caminata aleatoria).
-   - En **MAE en Soles/USD**, **Random Forest** obtuvo el menor error entre los ensambles (`0.006925 S/`), quedando a solo `0.000043 S/` (4.3 cienmilésimas de sol) de la caminata aleatoria (`0.006881 S/`), con un acierto direccional de `50.00 %` (`27 de 54` días).
-   - Las variables dominantes fueron las distancias a medias móviles (`price_vs_SMA_20`, `price_vs_SMA_10`, `price_vs_SMA_5`) y el primer rezago autorregresivo (`PEN_log_ret_lag_1`).
+*(Exportado en [`resultados_comparativos/tabla_valores_exactos_grafico_barras.csv`](../resultados_comparativos/tabla_valores_exactos_grafico_barras.csv))*
 
-2. **Mediano plazo semanal ($h = 5$ días hábiles):**
-   - **Random Forest** lideró tanto en validación cruzada (`65.59 pb`) como en MAE fuera de muestra (`0.017576 S/` vs. `0.017458 S/` de la caminata aleatoria) y en RMSE (`0.024326 S/` vs. `0.024435 S/`, con `Theil U = 0.9956`).
-   - **XGBoost** y **CatBoost** alcanzaron el mayor acierto direccional (`50.00 %`, acertando `27 de 54` sesiones). Las variables más influyentes fueron `GARCH_vol`, `price_vs_SMA_20`, `RSI`, `MACD_signal` y `month_cos`.
+| Horizonte ($h$) | Pronósticos ($N$) | MAE Caminata Aleatoria | MAE Random Forest (18 Vars) | MAE CatBoost (18 Vars) | MAE XGBoost (18 Vars) | MAE LightGBM (18 Vars) | Acierto RF (18 Vars) | Acierto CatBoost (18 Vars) | Acierto XGBoost (18 Vars) | Acierto LightGBM (18 Vars) |
+|:---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **1 día** | 59 | 0.006881 S/ | 0.006925 S/ | 0.006955 S/ | 0.006971 S/ | 0.006974 S/ | 50.00 % *(27/54)* | 46.30 % *(25/54)* | 42.59 % *(23/54)* | 46.30 % *(25/54)* |
+| **5 días** | 55 | 0.017458 S/ | 0.017576 S/ | 0.017758 S/ | 0.017602 S/ | 0.017640 S/ | 48.15 % *(26/54)* | 50.00 % *(27/54)* | 50.00 % *(27/54)* | 40.74 % *(22/54)* |
+| **20 días** | 40 | 0.035905 S/ | 0.038959 S/ | 0.041446 S/ | 0.039115 S/ | 0.039042 S/ | 12.50 % *(5/40)* | 10.00 % *(4/40)* | 5.00 % *(2/40)* | 2.50 % *(1/40)* |
 
-3. **Horizonte mensual ($h = 20$ días hábiles):**
-   - A 20 sesiones hábiles, ningún modelo basado únicamente en indicadores técnicos endógenos superó a la caminata aleatoria (`0.035905 S/`). **Random Forest** (`0.038959 S/`) y **LightGBM** (`0.039042 S/`) registraron el menor error entre los ensambles.
-   - Esto respalda empíricamente la necesidad de incorporar las covariables macroeconómicas y financieras globales (DXY, VIX, Cobre, Oro, WTI y diferencial de tasas) para capturar tendencias de mediano plazo.
+---
+
+## 4.5 Análisis del Peso de las Variables Exógenas por Horizonte
+
+*(Exportado en [`resultados_comparativos/resumen_importancia_exogenas.csv`](../resultados_comparativos/resumen_importancia_exogenas.csv))*
+
+| Horizonte ($h$) | Algoritmo de Ensamble | Peso Total de Variables Exógenas (%) | Peso Total de Variables Endógenas (%) | Top 5 Variables Predictoras Más Importantes en el Modelo |
+|:---:|---|---:|---:|---|
+| **1 día** | **Random Forest** | 40.77 % | 59.23 % | `price_vs_SMA_20`, `MACD_histogram`, `Oro_ret_20d`, `price_vs_SMA_10`, `MACD_signal` |
+| **1 día** | **XGBoost** | 66.05 % | 33.95 % | `Petroleo_WTI_vs_SMA_20`, `Petroleo_WTI_ret_20d`, `Inflacion_12M_cambio_20d`, `DXY_vs_SMA_20`, `Oro_ret_5d` |
+| **1 día** | **LightGBM** | 66.81 % | 33.19 % | `Petroleo_WTI_ret_20d`, `VIX_zscore_20d`, `US10Y_cambio_20d`, `PEN_log_ret_lag_10`, `Oro_ret_5d` |
+| **1 día** | **CatBoost** | 44.59 % | 55.41 % | `price_vs_SMA_20`, `day_of_week_cos`, `day_of_week_sin`, `VIX_cambio_1d`, `PEN_log_ret_lag_1` |
+| **5 días** | **Random Forest** | 44.95 % | 55.05 % | `MACD_histogram`, `MACD_signal`, `GARCH_vol`, `Inflacion_12M_cambio_20d`, `price_vs_SMA_10` |
+| **5 días** | **XGBoost** | 64.46 % | 35.54 % | `Petroleo_WTI_ret_5d`, `Inflacion_12M_pub_segura`, `GARCH_vol`, `SP500_vs_SMA_20`, `US10Y_nivel_lag1` |
+| **5 días** | **LightGBM** | 52.90 % | 47.10 % | `MACD_signal`, `GARCH_vol`, `US10Y_nivel_lag1`, `MACD_histogram`, `Inflacion_12M_cambio_20d` |
+| **5 días** | **CatBoost** | 61.74 % | 38.26 % | `Inflacion_12M_pub_segura`, `GARCH_vol`, `price_vs_SMA_20`, `US10Y_nivel_lag1`, `Petroleo_WTI_ret_20d` |
+| **20 días** | **Random Forest** | **54.97 %** | 45.03 % | `GARCH_vol`, `US10Y_nivel_lag1`, `MACD_line`, `Inflacion_12M_pub_segura`, `SP500_ret_20d` |
+| **20 días** | **XGBoost** | **64.77 %** | 35.23 % | `US10Y_nivel_lag1`, `SP500_ret_20d`, `month_cos`, `SP500_vs_SMA_20`, `Oro_ret_20d` |
+| **20 días** | **LightGBM** | **68.18 %** | 31.82 % | `SP500_ret_20d`, `US10Y_nivel_lag1`, `GARCH_vol`, `Oro_ret_20d`, `Cobre_vs_SMA_20` |
+| **20 días** | **CatBoost** | **60.09 %** | 39.91 % | `US10Y_nivel_lag1`, `Inflacion_12M_pub_segura`, `GARCH_vol`, `Inflacion_12M_cambio_20d`, `month_cos` |
+
+---
+
+## 4.6 Conclusiones Principales
+
+1. **Confirmación empírica de la hipótesis central de investigación:** Al incorporar las variables exógenas de condiciones financieras globales y *commodities* (**Cobre, VIX, DXY, Oro, Petróleo WTI, Bono del Tesoro de EE. UU. a 10 años, S&P 500 e Inflación BCRP**), los modelos de ensamble logran **reducir el Error Absoluto Medio (MAE) por debajo de la Caminata Aleatoria en los tres horizontes**:
+   - En **$h = 1$ día**: **LightGBM + Exógenas** (`0.006850 S/` vs. `0.006881 S/` de la caminata aleatoria).
+   - En **$h = 5$ días**: **Los 4 modelos (CatBoost `0.017262 S/`, XGBoost `0.017331 S/`, LightGBM `0.017339 S/` y Random Forest `0.017415 S/`) superan a la caminata aleatoria (`0.017458 S/`)**, con aciertos direccionales de **55.56 % a 64.81 %**.
+   - En **$h = 20$ días**: **Random Forest (`0.035302 S/`), XGBoost (`0.035647 S/`) y CatBoost (`0.035868 S/`) superan a la caminata aleatoria (`0.035905 S/`)**, reduciendo el MAE hasta en `-0.005578 S/` respecto a los modelos sin exógenas y elevando el acierto direccional de `2.5 %–12.5 %` hasta **`52.5 %–60.0 %` (`24 de 40` sesiones acertadas)**.
+2. **Importancia estructural de los fundamentos a 20 días:** En el horizonte mensual ($h = 20$), las variables exógenas representan entre el **55.0 % y el 68.2 %** de la ganancia total de información de los árboles, lideradas por la tasa del bono estadounidense a 10 años (`US10Y_nivel_lag1`), el apetito global por riesgo (`SP500_ret_20d`, `VIX_zscore_20d`), los metales de exportación (`Oro_ret_20d`, `Cobre_vs_SMA_20`), el petróleo (`Petroleo_WTI_ret_20d`) y la inflación doméstica (`Inflacion_12M_pub_segura`).

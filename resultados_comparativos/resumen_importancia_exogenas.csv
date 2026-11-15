@@ -1,0 +1,13 @@
+Horizonte (Dias Habiles),Algoritmo de Ensamble,Peso Total Variables Exogenas (%),Peso Total Variables Endogenas (%),Top 5 Variables Mas Importantes
+1,Random Forest,40.77,59.23,"price_vs_SMA_20, MACD_histogram, Oro_ret_20d, price_vs_SMA_10, MACD_signal"
+1,XGBoost,66.05,33.95,"Petroleo_WTI_vs_SMA_20, Petroleo_WTI_ret_20d, Inflacion_12M_cambio_20d, DXY_vs_SMA_20, Oro_ret_5d"
+1,LightGBM,66.83,33.17,"Petroleo_WTI_ret_20d, VIX_zscore_20d, US10Y_cambio_20d, Oro_ret_5d, Oro_ret_20d"
+1,CatBoost,44.59,55.41,"price_vs_SMA_20, day_of_week_cos, day_of_week_sin, VIX_cambio_1d, PEN_log_ret_lag_1"
+5,Random Forest,44.95,55.05,"MACD_histogram, MACD_signal, GARCH_vol, Inflacion_12M_cambio_20d, price_vs_SMA_10"
+5,XGBoost,64.46,35.54,"Petroleo_WTI_ret_5d, Inflacion_12M_pub_segura, GARCH_vol, SP500_vs_SMA_20, US10Y_nivel_lag1"
+5,LightGBM,52.94,47.06,"MACD_signal, GARCH_vol, US10Y_nivel_lag1, MACD_histogram, Inflacion_12M_cambio_20d"
+5,CatBoost,61.74,38.26,"Inflacion_12M_pub_segura, GARCH_vol, price_vs_SMA_20, US10Y_nivel_lag1, Petroleo_WTI_ret_20d"
+20,Random Forest,54.97,45.03,"GARCH_vol, US10Y_nivel_lag1, MACD_line, Inflacion_12M_pub_segura, SP500_ret_20d"
+20,XGBoost,64.77,35.23,"US10Y_nivel_lag1, SP500_ret_20d, month_cos, SP500_vs_SMA_20, Oro_ret_20d"
+20,LightGBM,68.2,31.8,"US10Y_nivel_lag1, Inflacion_12M_pub_segura, SP500_ret_20d, GARCH_vol, RSI"
+20,CatBoost,60.09,39.91,"US10Y_nivel_lag1, Inflacion_12M_pub_segura, GARCH_vol, Inflacion_12M_cambio_20d, month_cos"
