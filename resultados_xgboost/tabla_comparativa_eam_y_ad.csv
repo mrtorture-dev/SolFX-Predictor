@@ -1,26 +1,22 @@
 "Horizonte (h)
-[Sesiones n]",Modelo Evaluado,"Vars
-(p)","EAM_h
-(Soles / USD)","Cociente U_h
-[EAM / EAM(CA)]","Error Medio por
-USD 10,000 (S/)","Acierto Direccional
-AD_h (% y Sesiones)","Diferencia vs.
-Azar (50.0%)"
-1 dia habil (n=59),Caminata Aleatoria (CA),0,0.006881 S/,1.0000,S/ 68.81,0.00% (0/54)*,50.00% (Azar)
-1 dia habil (n=59),Regresion Ridge,35,0.006944 S/,1.0092,S/ 69.44,51.85% (28/54),+1.85 pp
-1 dia habil (n=59),Regresion Lasso,35,0.006951 S/,1.0101,S/ 69.51,51.85% (28/54),+1.85 pp
-1 dia habil (n=59),XGBoost + Busqueda Aleatoria (Lasso),35,0.007008 S/,1.0185,S/ 70.08,46.30% (25/54),-3.70 pp
-1 dia habil (n=59),XGBoost + PSO (97 Vars Completas),97,0.006875 S/,0.9991 ★,S/ 68.75,55.56% (30/54),+5.56 pp
-1 dia habil (n=59),XGBoost + PSO + Seleccion Lasso,35,0.007128 S/,1.0359,S/ 71.28,51.85% (28/54),+1.85 pp
-5 dias [Principal] (n=55),Caminata Aleatoria (CA),0,0.017458 S/,1.0000,S/ 174.58,0.00% (0/54)*,50.00% (Azar)
-5 dias [Principal] (n=55),Regresion Ridge,38,0.017852 S/,1.0226,S/ 178.52,44.44% (24/54),-5.56 pp
-5 dias [Principal] (n=55),Regresion Lasso,38,0.018288 S/,1.0475,S/ 182.88,46.30% (25/54),-3.70 pp
-5 dias [Principal] (n=55),XGBoost + Busqueda Aleatoria (Lasso),38,0.017312 S/,0.9916 ★,S/ 173.12,57.41% (31/54),+7.41 pp
-5 dias [Principal] (n=55),XGBoost + PSO (97 Vars Completas),97,0.017468 S/,1.0005,S/ 174.68,57.41% (31/54),+7.41 pp
-5 dias [Principal] (n=55),XGBoost + PSO + Seleccion Lasso,38,0.017439 S/,0.9989 ★,S/ 174.39,57.41% (31/54),+7.41 pp
-20 dias habiles (n=40),Caminata Aleatoria (CA),0,0.035905 S/,1.0000,S/ 359.05,0.00% (0/40)*,50.00% (Azar)
-20 dias habiles (n=40),Regresion Ridge,38,0.034420 S/,0.9586 ★,S/ 344.20,62.50% (25/40),+12.50 pp
-20 dias habiles (n=40),Regresion Lasso,38,0.034876 S/,0.9713 ★,S/ 348.76,55.00% (22/40),+5.00 pp
-20 dias habiles (n=40),XGBoost + Busqueda Aleatoria (Lasso),38,0.037029 S/,1.0313,S/ 370.29,52.50% (21/40),+2.50 pp
-20 dias habiles (n=40),XGBoost + PSO (97 Vars Completas),97,0.037398 S/,1.0416,S/ 373.98,60.00% (24/40),+10.00 pp
-20 dias habiles (n=40),XGBoost + PSO + Seleccion Lasso,38,0.035925 S/,1.0006,S/ 359.25,60.00% (24/40),+10.00 pp
+[Sesiones n]",Modelo Evaluado,"Cociente de Error Relativo U_h
+[U_h = EAM_h(Modelo) / EAM_h(CA)]","Acierto Direccional AD_h
+[% y Sesiones Acertadas]"
+1 dia habil (n=59),Caminata Aleatoria (CA),1.0000,0.00% (0/54)*
+1 dia habil (n=59),Regresion Ridge,1.0092,51.85% (28/54)
+1 dia habil (n=59),Regresion Lasso,1.0101,51.85% (28/54)
+1 dia habil (n=59),XGBoost + Busqueda Aleatoria (Lasso),1.0185,46.30% (25/54)
+1 dia habil (n=59),XGBoost + PSO (97 Vars Completas),0.9991 ★,55.56% (30/54)
+1 dia habil (n=59),XGBoost + PSO + Seleccion Lasso,1.0359,51.85% (28/54)
+5 dias [Principal] (n=55),Caminata Aleatoria (CA),1.0000,0.00% (0/54)*
+5 dias [Principal] (n=55),Regresion Ridge,1.0226,44.44% (24/54)
+5 dias [Principal] (n=55),Regresion Lasso,1.0475,46.30% (25/54)
+5 dias [Principal] (n=55),XGBoost + Busqueda Aleatoria (Lasso),0.9916 ★,57.41% (31/54)
+5 dias [Principal] (n=55),XGBoost + PSO (97 Vars Completas),1.0005,57.41% (31/54)
+5 dias [Principal] (n=55),XGBoost + PSO + Seleccion Lasso,0.9989 ★,57.41% (31/54)
+20 dias habiles (n=40),Caminata Aleatoria (CA),1.0000,0.00% (0/40)*
+20 dias habiles (n=40),Regresion Ridge,0.9586 ★,62.50% (25/40)
+20 dias habiles (n=40),Regresion Lasso,0.9713 ★,55.00% (22/40)
+20 dias habiles (n=40),XGBoost + Busqueda Aleatoria (Lasso),1.0313,52.50% (21/40)
+20 dias habiles (n=40),XGBoost + PSO (97 Vars Completas),1.0416,60.00% (24/40)
+20 dias habiles (n=40),XGBoost + PSO + Seleccion Lasso,1.0006,60.00% (24/40)
