@@ -1,10 +1,9 @@
 ﻿# 2. Trabajos relacionados
 
-## 2.1 Pronóstico multivariable del dólar y el sol
-Palma Arzubialde y Salazar Sedano [1] estudian el USD/PEN con 8 201 observaciones diarias de 1994 a 2025 y 13 variables exógenas. Comparan modelos estadísticos, machine learning y modelos fundacionales.
+La literatura muestra resultados mixtos sobre la predicción cambiaria. **Pfahler (2021)** compara XGBoost y redes neuronales con la caminata aleatoria en diez monedas de economías desarrolladas, con datos mensuales y a un mes. Halla mejoras en la dirección del cambio, pero no en el tamaño del error, y esas mejoras dependen sobre todo de variables de calendario; por ello, el autor concluye que no hay evidencia convincente de que los fundamentos económicos predigan. Su límite para este trabajo es que no estudia monedas emergentes ni horizontes diarios.
 
-## 2.2 Fundamentos y condiciones financieras globales
-Filippou, Rapach, Taylor y Zhou [2] analizan pronósticos mensuales de monedas combinando características de cada país con interacciones financieras globales.
+Por otro lado, **Filippou y otros (2026)** usan Elastic Net y redes neuronales profundas con datos mensuales de diez monedas desarrolladas. Encuentran un poder predictivo pequeño pero significativo ($R^2$ fuera de muestra de 1,86 %), que aparece sobre todo cuando la volatilidad cambiaria global es alta. Sus límites son la frecuencia mensual, la ausencia de monedas emergentes y el uso de datos ya revisados en lugar de los publicados en su momento, por lo que su resultado no se traslada directamente al USD/PEN diario.
 
-## 2.3 Aprendizaje automático y límites de la predicción cambiaria
-Pfahler [4] estudia la capacidad de las redes neuronales artificiales y XGBoost para predecir pares de divisas, sugiriendo que la predicción direccional mejora con variables temporales.
+En el contexto peruano, **Palma Arzubialde y Salazar Sedano (2025)** comparan siete modelos (ARX, CatBoost, LSTM, NBEATSx, TiDE, TimesFM y MOIRAI) para predecir el USD/PEN un día hacia adelante. Cinco de ellos superan al pronóstico ingenuo, con errores escalados entre 0,91 y 0,97; TimesFM obtiene el menor error y CatBoost el mayor acierto direccional. Sus límites son que evalúan un solo horizonte y un tramo final de 60 sesiones, por lo que no se sabe si la mejora se mantiene a 5 o 20 días ni en otros periodos.
+
+Asimismo, **Pebrianti y otros (2023)** ajustan los hiperparámetros de XGBoost con PSO para pronosticar precios de acciones y obtienen menor error que XGBoost sin ajustar, LSTM, SVR y Random Forest. Sus límites son que no comparan PSO con métodos de búsqueda más simples, como la búsqueda aleatoria, con el mismo número de evaluaciones, y que el mercado bursátil se comporta distinto del cambiario. Por ello, el presente trabajo evaluará **XGBoost con PSO** frente a la **caminata aleatoria** y a una **búsqueda aleatoria de igual costo**, en distintos horizontes y métricas.

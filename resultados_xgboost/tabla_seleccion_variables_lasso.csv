@@ -1,0 +1,4 @@
+Horizonte h (Dias Habiles),Total Variables Iniciales,Variables Seleccionadas por Lasso,Reduccion Dimensional (%),Del Grupo 1 (Propias USD/PEN),Del Grupo 2 (Globales y Commodities),Del Grupo 3 (Macroeconomicas BCRP),Top 8 Variables Seleccionadas por Lasso
+1,97,35,63.9,10,21,4,"Cobre_ret_60d, st_x_DXY_ret_5d, st_x_Cobre_ret_5d, dow_jue, Oro_ret_20d, DXY_ret_20d, Inflacion_Mensual_pub, st_x_Oro_ret_20d"
+5,97,38,60.8,7,24,7,"SP500_vs_SMA_60, SP500_ret_60d, st_x_Cobre_ret_5d, US10Y_nivel_lag1, price_vs_SMA_60, IPC_General_var_63d_pub, st_x_Inflacion_12M_pub, st_x_DXY_ret_5d"
+20,97,38,60.8,9,23,6,"Cobre_vs_SMA_60, US10Y_nivel_lag1, SP500_ret_20d, TermIntercambio_Cu_WTI_ret_20d, IPC_SinAlimEnergia_var_63d_pub, IPC_General_var_63d_pub, VIX_nivel_lag1, PEN_vol_20d"
